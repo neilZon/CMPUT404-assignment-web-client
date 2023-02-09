@@ -66,7 +66,9 @@ class HTTPClient(object):
         elif parsed_url.scheme == "http":
             port = 80
 
-        return parsed_url.hostname, port
+        # print("##JK#JK#JKJ#K#JK#J", parsed_url.hostname, parsed_url.netloc, )
+
+        return parsed_url.hostname, port, parsed_url.netloc
 
     def get_path(self, url):
         parsed_url = urlparse(url)
@@ -110,12 +112,12 @@ class HTTPClient(object):
         return buffer.decode('utf-8')
 
     def GET(self, url, args=None):
-        host, port = self.get_host_port(url)
+        host, port, netloc = self.get_host_port(url)
         path = self.get_path(url)
 
         self.connect(host, port)
 
-        self.sendall(f"GET {path} HTTP/1.1\r\nHost: {host}\r\nUser-Agent: Idrk what this is heheh\r\n\r\n")
+        self.sendall(f"GET {path} HTTP/1.1\r\nHost: {netloc}\r\nUser-Agent: Mozilla/5.0\r\n\r\n")
 
         self.socket.shutdown(socket.SHUT_WR)
 
@@ -126,7 +128,7 @@ class HTTPClient(object):
         code = self.get_code(response)
         headers = self.get_headers(response_lines)
         body = self.get_body(response_lines)
-        print(code, headers, body)
+        # print(code, headers, body)
 
         self.close()
         return HTTPResponse(code, body)
@@ -135,7 +137,7 @@ class HTTPClient(object):
         return f"Content-Length: {len(data)}\r\nContent-Type: application/x-www-form-urlencoded\r\n"                
 
     def POST(self, url, args=None):
-        host, port = self.get_host_port(url)
+        host, port, netloc = self.get_host_port(url)
         path = self.get_path(url)
 
         post_body=""
@@ -146,7 +148,7 @@ class HTTPClient(object):
 
         req_headers = self.build_post_header_string(post_body)
 
-        self.sendall(f"POST {path} HTTP/1.1\r\nHost: {host}\r\n{req_headers}\r\n{post_body}")
+        self.sendall(f"POST {path} HTTP/1.1\r\nHost: {netloc}\r\nUser-Agent: Mozilla/5.0\r\n{req_headers}\r\n{post_body}")
 
         self.socket.shutdown(socket.SHUT_WR)
 
@@ -157,7 +159,6 @@ class HTTPClient(object):
         code = self.get_code(response)
         headers = self.get_headers(response_lines)
         body = self.get_body(response_lines)
-
 
         self.close()
         return HTTPResponse(code, body)
