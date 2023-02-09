@@ -36,30 +36,51 @@ class HTTPClient(object):
     def __init__(self):
         self.socket = None
 
+    def url_encode(self, s):
+        return s.replace("\r", "%0D").replace("\n", "%0A")
+
+    def build_post_body_args(self, args):
+        arg_list = []
+        for k, v in args.items():
+            k = self.url_encode(k)
+            v = self.url_encode(v)
+            if len(arg_list) > 0:
+                arg_list.append("&")
+                arg_list.append(k)
+                arg_list.append("=")
+                arg_list.append(v)  
+            else:
+                arg_list.append(k)
+                arg_list.append("=")
+                arg_list.append(v)
+        return "".join(arg_list)
+
     def get_host_port(self, url):
         parsed_url = urlparse(url)
-        if parsed_url.scheme == "https": 
-            return 443
-        elif parsed_url.scheme == "http":
-            return 80
-        else:
-            return -1
+        port = 0
 
-    def get_host(self, url):
-        parsed_url = urlparse(url)
-        return parsed_url.netloc
-    
+        if parsed_url.port is not None:
+            port = parsed_url.port
+        elif parsed_url.scheme == "https": 
+            port = 443
+        elif parsed_url.scheme == "http":
+            port = 80
+
+        return parsed_url.hostname, port
+
     def get_path(self, url):
         parsed_url = urlparse(url)
         return parsed_url.path
 
     def connect(self, host, port):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        if host != '127.0.0.1':
+            host = socket.gethostbyname(host)
         self.socket.connect((host, port))
         return None
 
     def get_code(self, response_line):
-        return response_line.split(" ")[1]
+        return int(response_line.split(" ")[1])
 
     def get_headers(self, data):
         header_break_idx = data.index("")
@@ -89,14 +110,12 @@ class HTTPClient(object):
         return buffer.decode('utf-8')
 
     def GET(self, url, args=None):
-        # port = self.get_host_port(url)
-        port = 80
-        host = self.get_host(url)
+        host, port = self.get_host_port(url)
         path = self.get_path(url)
 
         self.connect(host, port)
 
-        self.sendall(f"GET {path} HTTP/1.1\r\nHost: {host}\r\n\r\n")
+        self.sendall(f"GET {path} HTTP/1.1\r\nHost: {host}\r\nUser-Agent: Idrk what this is heheh\r\n\r\n")
 
         self.socket.shutdown(socket.SHUT_WR)
 
@@ -104,28 +123,30 @@ class HTTPClient(object):
 
         response_lines = response.split("\r\n")
 
-        print(response_lines)
-
         code = self.get_code(response)
         headers = self.get_headers(response_lines)
         body = self.get_body(response_lines)
+        print(code, headers, body)
 
         self.close()
         return HTTPResponse(code, body)
     
     def build_post_header_string(self, data):
-        return f"Content-Length: {len(data)}\r\nContent-Type: application/x-www-form-urlencoded\r\n"
+        return f"Content-Length: {len(data)}\r\nContent-Type: application/x-www-form-urlencoded\r\n"                
 
     def POST(self, url, args=None):
-        # port = self.get_host_port(url)
-        port = 80
-        host = self.get_host(url)
+        host, port = self.get_host_port(url)
         path = self.get_path(url)
-        req_headers = self.build_post_header_string("data")
 
+        post_body=""
+        if args:
+            post_body = self.build_post_body_args(args)
+        
         self.connect(host, port)
 
-        self.sendall(f"POST {path} HTTP/1.1\r\nHost: {host}:80:127.0.0.1\r\n{req_headers}\r\n")
+        req_headers = self.build_post_header_string(post_body)
+
+        self.sendall(f"POST {path} HTTP/1.1\r\nHost: {host}\r\n{req_headers}\r\n{post_body}")
 
         self.socket.shutdown(socket.SHUT_WR)
 
@@ -136,6 +157,7 @@ class HTTPClient(object):
         code = self.get_code(response)
         headers = self.get_headers(response_lines)
         body = self.get_body(response_lines)
+
 
         self.close()
         return HTTPResponse(code, body)
