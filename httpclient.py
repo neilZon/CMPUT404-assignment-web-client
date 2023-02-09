@@ -148,7 +148,7 @@ class HTTPClient(object):
 
         req_headers = self.build_post_header_string(post_body)
 
-        self.sendall(f"POST {path} HTTP/1.1\r\nHost: {netloc}\r\nUser-Agent: Mozilla/5.0\r\n{req_headers}\r\n{post_body}")
+        self.sendall(f"POST {path} HTTP/1.1\r\nHost: {netloc}\r\nUser-Agent: Mozilla/5.0{req_headers}\r\n{post_body}")
 
         self.socket.shutdown(socket.SHUT_WR)
 
